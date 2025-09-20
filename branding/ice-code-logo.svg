@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ICE‑CODE.help logo">
+  <defs>
+    <style>
+      .bg{fill:#e30613}
+      .white{fill:#ffffff}
+      .txt{font-family:'Impact','Arial Black',system-ui,sans-serif; font-weight:800; fill:#ffffff}
+    </style>
+  </defs>
+  <rect class="bg" x="24" y="24" width="976" height="976" rx="120" ry="120"/>
+  <text class="txt" x="120" y="360" font-size="300" letter-spacing="8">ICE</text>
+  <text class="txt" x="140" y="600" font-size="200" letter-spacing="34">C O D E</text>
+  <rect class="white" x="140" y="640" width="744" height="18" rx="9"/>
+  <text class="txt" x="140" y="740" font-size="78" letter-spacing="8">IN CASE OF EMERGENCY</text>
+</svg>
