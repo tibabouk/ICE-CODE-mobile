@@ -1,55 +1,114 @@
-# ICE‑CODE.mobile (MVP)
+# ICE-CODE Mobile — Sidecar auth + sync
 
-MVP React Native app to read, edit and write NFC tags using the ICE‑CODE NDEF schema (Text, Text, URI) and export a NFC Writer JSON (ntgui_version=18).
+Cette section documente l’intégration « Sidecar auth + profile sync (magic link) ».
 
-## App identifiers
-- Display name: `ICE‑CODE.help`
-- Android applicationId: `com.icecode.app`
-- iOS bundle id: `com.icecode.app`
+## Aperçu
 
-## Repo contents
-- NFC service: `src/services/ndef.ts`
-- MVP screen: `src/screens/EncodeScreen.tsx`
-- App entry: `App.tsx`
-- Branding SVG: `branding/ice-code-logo.svg`
-- Icon helper: `tools/generate-icons.js`
+- Authentification par « magic link » (email → code → token).
+- Récupération du profil pour pré-remplir les champs Text1/Text2 et l’URL (lecture seule).
+- Mise à jour du profil (PUT) depuis le contenu des champs Text1/Text2 (format balisé).
+- Gestion des 401 → logout automatique.
 
-## Getting started
+## Démarrage rapide (mock server)
 
-### Option A — Add to an existing RN app
-1. Copy `src/` and `App.tsx`, or import the screen into your navigator.
-2. Install deps:
+1. Installer les dépendances du mock:
    ```bash
-   npm i react-native-nfc-manager
+   npm i express cors
    ```
-3. Android (`android/app/src/main/AndroidManifest.xml`):
-   ```xml
-   <uses-permission android:name="android.permission.NFC" />
-   <uses-feature android:name="android.hardware.nfc" android:required="true" />
+2. Lancer le serveur mock:
+   ```bash
+   npm run dev:sidecar
    ```
-4. iOS (Xcode):
-   - Bundle ID: `com.icecode.app`
-   - Info.plist keys:
-     - `NFCReaderUsageDescription`
-     - `com.apple.developer.nfc.readersession.formats` = `NDEF`
-5. Run on a real device (NFC requires hardware).
+   Ajoutez dans package.json:
+   ```json
+   {
+     "scripts": {
+       "dev:sidecar": "node tools/sidecar-dev-server.js"
+     }
+   }
+   ```
+3. Vérifier que `API_BASE_URL` pointe vers `http://localhost:3001` (voir `src/config.ts`).
 
-### Option B — Start fresh
-```bash
-npx react-native init ICECODE --template react-native-template-typescript
-# then copy files from this repo, and:
-npm i react-native-nfc-manager
+## Flow de test
+
+1. Ouvrir l’app sans token: l’écran d’auth s’affiche.
+2. Entrer un email et « Envoyer code » → OK (le mock accepte tous les emails et émet le code 123456).
+3. Sur l’écran suivant, entrer `123456` → un token est stocké → l’écran principal (EncodeScreen) est affiché.
+4. Cliquer « Importer en ligne » → les champs Text1/Text2 sont remplis depuis le profil; l’URL (lecture seule) est mise à jour.
+5. Modifier des champs dans Text1/Text2 puis « Exporter en ligne » → PUT /me/profile; recharger via « Importer en ligne » pour vérifier la persistance.
+6. Pour simuler une 401, changez manuellement le token dans le storage (ou redémarrez le mock sans réémettre de code) → l’app retourne au login.
+
+## Intégration UI
+
+- Le flow d’auth ajoute deux écrans:
+  - `src/screens/LoginScreen.tsx` (envoi du code)
+  - `src/screens/VerifyCodeScreen.tsx` (échange du code)
+- Les actions de synchronisation sont exposées par `useProfileSync()`:
+  - `importOnlineToTextFields(setText1, setText2, setUrl)`
+  - `exportOnlineFromTextFields(text1, text2)`
+
+### Exemple d’intégration dans EncodeScreen
+
+```tsx
+import { useProfileSync } from '../hooks/useProfileSync';
+
+const { loading: syncLoading, importOnlineToTextFields, exportOnlineFromTextFields } = useProfileSync();
+
+// Supposons que votre écran a déjà ces states:
+const [text1, setText1] = useState('');
+const [text2, setText2] = useState('');
+const [url, setUrl] = useState('');
+
+// Boutons (placer près des actions existantes)
+<Button title={syncLoading ? 'Import…' : 'Importer en ligne'} onPress={() => importOnlineToTextFields(setText1, setText2, setUrl)} disabled={syncLoading} />
+<Button title={syncLoading ? 'Export…' : 'Exporter en ligne'} onPress={() => exportOnlineFromTextFields(text1, text2)} disabled={syncLoading} />
 ```
 
-## JSON export
-The UI exports a JSON compatible with NFC Writer (ntgui_version=18) and suggests a filename `username_YYYYMMDD_NFCntguiv18.json`.
+### App.tsx (routing minimal sans lib)
 
-## Branding
-- Primary color: `#e30613`
-- Vector logo: `branding/ice-code-logo.svg`
-- Generate icons: `node tools/generate-icons.js`
+Vous pouvez rendre conditionnellement l’auth vs l’écran principal:
 
-## Roadmap
-- Magic link auth + CB sync (GET/PUT profile)
-- Diff resolution Tag ↔ Online
-- Store builds (Play / App Store)
+```tsx
+import { useAuth } from './src/hooks/useAuth';
+import LoginScreen from './src/screens/LoginScreen';
+import VerifyCodeScreen from './src/screens/VerifyCodeScreen';
+import EncodeScreen from './src/screens/EncodeScreen';
+
+export default function App() {
+  const { token, loading, phase } = useAuth();
+
+  if (loading) return null;
+
+  if (!token) {
+    if (phase === 'verify') return <VerifyCodeScreen />;
+    return <LoginScreen />;
+  }
+
+  return <EncodeScreen />;
+}
+```
+
+## Format des champs Text1/Text2
+
+- Text1
+  ```
+  First name: Jane
+  Last name: Doe
+  DOB: 1990-01-01
+  Languages: FR,EN
+  Country: FR
+  Blood: O+
+  ```
+- Text2
+  ```
+  ICE 1: Alice (+3312345678)
+  ICE 2: Bob (+3311122233)
+  ICE 3: Charlie (+3399988877)
+  ```
+
+L’export en ligne parse ces formats de base; les lignes inconnues sont ignorées.
+
+## Sécurité
+
+- Le token est stocké via AsyncStorage si disponible, sinon fallback mémoire (DEV).
+- Pour la production, prévoir un stockage sécurisé (Keychain/Keystore), ou une lib comme `react-native-keychain`.
