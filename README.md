@@ -49,6 +49,30 @@ The UI exports a JSON compatible with NFC Writer (ntgui_version=18) and suggests
 - Vector logo: `branding/ice-code-logo.svg`
 - Generate icons: `node tools/generate-icons.js`
 
+## Contributing
+
+We welcome contributions to ICE-CODE-mobile! Here's how to get involved:
+
+### For New Contributors
+1. **Fork the repository** and clone your fork
+2. **Set up the development environment** (see Getting started above)
+3. **Create a feature branch** from main: `git checkout -b feature/your-feature-name`
+4. **Make your changes** and test thoroughly on physical devices (NFC requires hardware)
+5. **Submit a pull request** with a clear description of your changes
+
+### Inviting Collaborators
+Repository owners can invite collaborators (including GitHub Copilot users) to contribute directly. See our [Collaboration Guide](docs/COLLABORATION.md) for detailed instructions on:
+- Adding collaborators to the repository
+- Setting up GitHub Copilot for development
+- Managing permissions and access levels
+- Development workflow and best practices
+
+### Development Guidelines
+- Test NFC functionality on real devices
+- Follow TypeScript best practices
+- Maintain compatibility with both Android and iOS
+- Update documentation for new features
+
 ## Roadmap
 - Magic link auth + CB sync (GET/PUT profile)
 - Diff resolution Tag ↔ Online
